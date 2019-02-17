@@ -10,7 +10,9 @@ from utils import *
 
 
 class ShapeNet(data.Dataset):
-    def __init__(self, rootimg = "./data/ShapeNet/ShapeNetRendering", rootpc = "./data/customShapeNet" , class_choice = "chair", train = True, npoints = 2500, normal = False, balanced = False, gen_view=False, SVR=False, idx=0):
+    def __init__(self, catfile_path='./data/synsetoffset2category.txt',
+            rootimg = "./data/ShapeNet/ShapeNetRendering", rootpc = "./data/customShapeNet" ,
+            class_choice = ["chair"], train = True, npoints = 2500, normal = False, balanced = False, gen_view=False, SVR=False, idx=0):
         self.balanced = balanced
         self.normal = normal
         self.train = train
@@ -18,7 +20,8 @@ class ShapeNet(data.Dataset):
         self.rootpc = rootpc
         self.npoints = npoints
         self.datapath = []
-        self.catfile = os.path.join('./data/synsetoffset2category.txt')
+        # self.catfile = os.path.join('./data/synsetoffset2category.txt')
+        self.catfile = os.path.join(catfile_path)
         self.cat = {}
         self.meta = {}
         self.SVR = SVR
@@ -33,7 +36,7 @@ class ShapeNet(data.Dataset):
         print(self.cat)
         empty = []
         for item in self.cat:
-            dir_img  = os.path.join(self.rootimg, self.cat[item])
+            dir_img = os.path.join(self.rootimg, self.cat[item])
             fns_img = sorted(os.listdir(dir_img))
 
             try:
@@ -161,8 +164,15 @@ class ShapeNet(data.Dataset):
 if __name__  == '__main__':
 
     print('Testing Shapenet dataset')
-    d  =  ShapeNet(class_choice =  None, balanced= False, train=True, npoints=2500)
+    d  =  ShapeNet(
+            catfile_path = '../data/synsetoffset2category.txt',
+            rootimg = "../data/ShapeNet/ShapeNetRendering", rootpc = "../data/customShapeNet",
+            class_choice =  None, balanced= False, train=True, npoints=2500)
     a = len(d)
-    d  =  ShapeNet(class_choice =  None, balanced= False, train=False, npoints=2500)
+    import pdb; pdb.set_trace()
+    d  =  ShapeNet(
+            catfile_path = '../data/synsetoffset2category.txt',
+            rootimg = "../data/ShapeNet/ShapeNetRendering", rootpc = "../data/customShapeNet",
+            class_choice =  None, balanced= False, train=False, npoints=2500)
     a = a + len(d)
     print(a)

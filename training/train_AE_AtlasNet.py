@@ -26,6 +26,8 @@ parser.add_argument('--nb_primitives', type=int, default = 25,  help='number of 
 parser.add_argument('--super_points', type=int, default = 2500,  help='number of input points to pointNet, not used by default')
 parser.add_argument('--env', type=str, default ="AE_AtlasNet"   ,  help='visdom environment')
 parser.add_argument('--accelerated_chamfer', type=int, default =0   ,  help='use custom build accelarated chamfer')
+parser.add_argument('--visdom_port', type=int, default =8888   ,  help='Port used for visdom')
+parser.add_argument('--class_choice', type=str, default = None, nargs='+', help='Class choice')
 
 opt = parser.parse_args()
 print (opt)
@@ -67,7 +69,7 @@ else:
 
 # =============DEFINE stuff for logs ======================================== #
 # Launch visdom for visualization
-vis = visdom.Visdom(port = 8888, env=opt.env)
+vis = visdom.Visdom(port = opt.visdom_port, env=opt.env)
 now = datetime.datetime.now()
 save_path = now.isoformat()
 dir_name =  os.path.join('log', save_path)
@@ -87,10 +89,10 @@ best_val_loss = 10
 
 # ===================CREATE DATASET================================= #
 #Create train/test dataloader
-dataset = ShapeNet( normal = False, class_choice = None, train=True)
+dataset = ShapeNet( normal = False, class_choice = opt.class_choice, train=True)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
                                           shuffle=True, num_workers=int(opt.workers))
-dataset_test = ShapeNet( normal = False, class_choice = None, train=False)
+dataset_test = ShapeNet( normal = False, class_choice = opt.class_choice, train=False)
 dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=opt.batchSize,
                                           shuffle=False, num_workers=int(opt.workers))
 
@@ -134,7 +136,7 @@ for epoch in range(opt.nepoch):
     #TRAIN MODE
     train_loss.reset()
     network.train()
-    
+
     # learning rate schedule
     if epoch==100:
         optimizer = optim.Adam(network.parameters(), lr = lrate/10.0)
@@ -246,3 +248,4 @@ for epoch in range(opt.nepoch):
     #save last network
     print('saving net...')
     torch.save(network.state_dict(), '%s/network.pth' % (dir_name))
+

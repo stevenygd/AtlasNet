@@ -1,4 +1,4 @@
-plane	02691156
+airplane	02691156
 bench	02828884
 cabinet	02933112
 car	02958343
