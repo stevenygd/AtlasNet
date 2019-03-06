@@ -24,13 +24,13 @@ parser.add_argument('--workers', type=int, help='number of data loading workers'
 parser.add_argument('--nepoch', type=int, default=400, help='number of epochs to train for')
 parser.add_argument('--model_preTrained_AE', type=str, default = 'trained_models/ae_atlasnet_25.pth',  help='model path')
 parser.add_argument('--model', type=str, default = '',  help='model path')
-parser.add_argument('--num_points', type=int, default = 2500,  help='number of points')
+parser.add_argument('--num_points', type=int, default = 2048,  help='number of points')
 parser.add_argument('--nb_primitives', type=int, default = 25,  help='number of primitives')
 parser.add_argument('--env', type=str, default ="SVR_AtlasNet"   ,  help='visdom env')
 parser.add_argument('--fix_decoder', type=bool, default = True   ,  help='if set to True, on the the resnet encoder is trained')
 parser.add_argument('--accelerated_chamfer', type=int, default =0   ,  help='use custom build accelarated chamfer')
 parser.add_argument('--visdom_port', type=int, default = 8888   ,  help='Port use for visdom server.')
-
+parser.add_argument('--class_choice', type=str, default = None, nargs='+', help='Class choice')
 opt = parser.parse_args()
 print (opt)
 # ========================================================== #
@@ -92,15 +92,15 @@ torch.manual_seed(opt.manualSeed)
 
 # ===================CREATE DATASET================================= #
 #Create train/test dataloader on new views and test dataset on new models
-dataset = ShapeNet( SVR=True, normal = False, class_choice = None, train=True)
+dataset = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=True)
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
                                           shuffle=True, num_workers=int(opt.workers))
 
-dataset_test = ShapeNet( SVR=True, normal = False, class_choice = None, train=False)
+dataset_test = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=False)
 dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=opt.batchSize,
                                           shuffle=False, num_workers=int(opt.workers))
 
-dataset_test_view = ShapeNet( SVR=True, normal = False, class_choice = None, train=True, gen_view=True)
+dataset_test_view = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=True, gen_view=True)
 dataloader_test_view = torch.utils.data.DataLoader(dataset_test, batch_size=opt.batchSize,
                                           shuffle=False, num_workers=int(opt.workers))
 

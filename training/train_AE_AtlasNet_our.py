@@ -15,6 +15,7 @@ import os
 import json
 import time, datetime
 import visdom
+from tensorboardX import SummaryWriter
 
 # =============PARAMETERS======================================== #
 parser = argparse.ArgumentParser()
@@ -22,12 +23,12 @@ parser.add_argument('--batchSize', type=int, default=32, help='input batch size'
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=12)
 parser.add_argument('--nepoch', type=int, default=120, help='number of epochs to train for')
 parser.add_argument('--model', type=str, default = '',  help='optional reload model path')
-parser.add_argument('--num_points', type=int, default = 2500,  help='number of points')
+parser.add_argument('--num_points', type=int, default = 2048,  help='number of points')
 parser.add_argument('--nb_primitives', type=int, default = 25,  help='number of primitives in the atlas')
-parser.add_argument('--super_points', type=int, default = 2500,  help='number of input points to pointNet, not used by default')
-parser.add_argument('--env', type=str, default ="AE_AtlasNet"   ,  help='visdom environment')
-parser.add_argument('--accelerated_chamfer', type=int, default =0   ,  help='use custom build accelarated chamfer')
-parser.add_argument('--visdom_port', type=int, default =8888   ,  help='Port used for visdom')
+parser.add_argument('--super_points', type=int, default = 2048,  help='number of input points to pointNet, not used by default')
+parser.add_argument('--env', type=str, default =None ,  help='environment')
+parser.add_argument('--accelerated_chamfer', type=int, default=1   ,  help='use custom build accelarated chamfer')
+parser.add_argument('--visdom_port', type=int, default = 48481,  help='Port used for visdom')
 parser.add_argument('--class_choice', type=str, default = None, nargs='+', help='Class choice')
 
 opt = parser.parse_args()
@@ -72,14 +73,14 @@ else:
 # Launch visdom for visualization
 vis = visdom.Visdom(port = opt.visdom_port, env=opt.env)
 now = datetime.datetime.now()
-save_path = now.isoformat()
-dir_name =  os.path.join('log', save_path)
-if not os.path.exists(dir_name):
-    os.mkdir(dir_name)
+save_path = opt.env + "_%s"%now.isoformat()
+dir_name =  os.path.join('log', "%s"%("_".join(opt.class_choice)), save_path)
+os.makedirs(dir_name, exist_ok=True)
 logname = os.path.join(dir_name, 'log.txt')
+log_name =  os.path.join('runs', "%s"%("_".join(opt.class_choice)), save_path)
+writer = SummaryWriter(log_dir=log_name)
 
 blue = lambda x:'\033[94m' + x + '\033[0m'
-
 opt.manualSeed = random.randint(1, 10000) # fix seed
 print("Random Seed: ", opt.manualSeed)
 random.seed(opt.manualSeed)
@@ -178,6 +179,8 @@ for epoch in range(opt.nepoch):
                     )
 
         print('[%d: %d/%d] train loss:  %f ' %(epoch, i, len_dataset/32, loss_net.item()))
+        step = i + epoch * len(dataloader)
+        writer.add_scalar("train/loss", loss_net.item(), step)
 
 
     #UPDATE CURVES
@@ -224,6 +227,7 @@ for epoch in range(opt.nepoch):
 
         #UPDATE CURVES
         val_curve.append(val_loss.avg)
+        writer.add_scalar("val/loss", val_loss.avg, epoch)
 
     vis.line(X=np.column_stack((np.arange(len(train_curve)),np.arange(len(val_curve)))),
                  Y=np.column_stack((np.array(train_curve),np.array(val_curve))),

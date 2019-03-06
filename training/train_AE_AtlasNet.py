@@ -14,6 +14,7 @@ import os
 import json
 import time, datetime
 import visdom
+from tensorboardX import SummaryWriter
 
 # =============PARAMETERS======================================== #
 parser = argparse.ArgumentParser()
@@ -26,7 +27,7 @@ parser.add_argument('--nb_primitives', type=int, default = 25,  help='number of 
 parser.add_argument('--super_points', type=int, default = 2500,  help='number of input points to pointNet, not used by default')
 parser.add_argument('--env', type=str, default ="AE_AtlasNet"   ,  help='visdom environment')
 parser.add_argument('--accelerated_chamfer', type=int, default =0   ,  help='use custom build accelarated chamfer')
-parser.add_argument('--visdom_port', type=int, default =8888   ,  help='Port used for visdom')
+parser.add_argument('--visdom_port', type=int, default =48481,  help='Port used for visdom')
 parser.add_argument('--class_choice', type=str, default = None, nargs='+', help='Class choice')
 
 opt = parser.parse_args()
@@ -71,10 +72,10 @@ else:
 # Launch visdom for visualization
 vis = visdom.Visdom(port = opt.visdom_port, env=opt.env)
 now = datetime.datetime.now()
-save_path = now.isoformat()
-dir_name =  os.path.join('log', save_path)
-if not os.path.exists(dir_name):
-    os.mkdir(dir_name)
+save_path = opt.env + "_%s"%now.isoformat()
+dir_name =  os.path.join('log', "%s"%("_".join(opt.class_choice)), save_path)
+# if not os.path.exists(dir_name):
+os.makedirs(dir_name, exist_ok=True)
 logname = os.path.join(dir_name, 'log.txt')
 
 blue = lambda x:'\033[94m' + x + '\033[0m'

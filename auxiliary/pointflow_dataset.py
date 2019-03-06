@@ -12,7 +12,6 @@ from utils import AverageValueMeter
 synsetid_to_cate = {
     '02691156': 'airplane',  '02773838': 'bag',        '02801938': 'basket',
     '02808440': 'bathtub',   '02818832': 'bed',        '02828884': 'bench',
-    '02834778': 'bicycle',   '02843684': 'birdhouse',  '02871439': 'bookshelf',
     '02876657': 'bottle',    '02880940': 'bowl',       '02924116': 'bus',
     '02933112': 'cabinet',   '02747177': 'can',        '02942699': 'camera',
     '02954340': 'cap',       '02958343': 'car',        '03001627': 'chair',
@@ -28,7 +27,10 @@ synsetid_to_cate = {
     '03991062': 'pot',       '04004475': 'printer',    '04074963': 'remote_control',
     '04090263': 'rifle',     '04099429': 'rocket',     '04225987': 'skateboard',
     '04256520': 'sofa',      '04330267': 'stove',      '04530566': 'vessel',
-    '04554684': 'washer',    '02858304': 'boat',       '02992529': 'cellphone',
+    '04554684': 'washer',    '02992529': 'cellphone',
+    '02843684': 'birdhouse',  '02871439': 'bookshelf',
+    # '02858304': 'boat', no boat in our dataset, merged into vessels
+    # '02834778': 'bicycle', not in our taxonomy
 }
 cate_to_synsetid = {v:k for k,v in synsetid_to_cate.items()}
 
@@ -210,7 +212,12 @@ class ShapeNet15kPointClouds(Uniform15KPC):
         self.te_sample_size = te_sample_size
         self.cates = categories
         self.cat = self.cates
-        self.synset_ids = [cate_to_synsetid[c] for c in self.cates]
+        if 'all' in self.cates:
+            self.synset_ids = list(cate_to_synsetid.values())
+            self.cates = list(cate_to_synsetid.keys())
+            self.cat = list(cate_to_synsetid.keys())
+        else:
+            self.synset_ids = [cate_to_synsetid[c] for c in self.cates]
 
         self.perCatValueMeter = {}
         for item in self.cat:
