@@ -159,12 +159,12 @@ with torch.no_grad():
         #SUPER_RESOLUTION
         assert points.size(2) >= opt.num_points + opt.gen_points
         input_points = points[:,:,:opt.num_points].contiguous()
-        test_points = points[:,:,opt.num_points:opt.num_points+opt.gen_points].contiguous()
+        test_points = points[:,:,opt.num_points:opt.num_points+opt.gen_points].transpose(2,1).contiguous()
         # print(input_points.size())
         # print(test_points.size())
         #END SUPER RESOLUTION
         pointsReconstructed  = network.forward_inference(input_points, grid)
-        dist1, dist2 = distChamfer(test_points.transpose(2,1).contiguous(), pointsReconstructed)
+        dist1, dist2 = distChamfer(test_points, pointsReconstructed)
         loss_net = ((torch.mean(dist1) + torch.mean(dist2)))
         val_loss.update(loss_net.item())
         dataset_test.perCatValueMeter[cat].update(loss_net.item())
