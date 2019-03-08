@@ -14,6 +14,7 @@ import os
 import json
 import time, datetime
 import visdom
+from tensorboardX import SummaryWriter
 
 best_val_loss = 10
 
@@ -22,14 +23,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--batchSize', type=int, default=32, help='input batch size')
 parser.add_argument('--workers', type=int, help='number of data loading workers', default=12)
 parser.add_argument('--nepoch', type=int, default=400, help='number of epochs to train for')
-parser.add_argument('--model_preTrained_AE', type=str, default = 'trained_models/ae_atlasnet_25.pth',  help='model path')
+# parser.add_argument('--model_preTrained_AE', type=str, default = 'trained_models/ae_atlasnet_25.pth',  help='model path')
+parser.add_argument('--model_preTrained_AE', type=str, default = None,  help='model path')
 parser.add_argument('--model', type=str, default = '',  help='model path')
 parser.add_argument('--num_points', type=int, default = 2048,  help='number of points')
 parser.add_argument('--nb_primitives', type=int, default = 25,  help='number of primitives')
 parser.add_argument('--env', type=str, default ="SVR_AtlasNet"   ,  help='visdom env')
 parser.add_argument('--fix_decoder', type=bool, default = True   ,  help='if set to True, on the the resnet encoder is trained')
 parser.add_argument('--accelerated_chamfer', type=int, default =0   ,  help='use custom build accelarated chamfer')
-parser.add_argument('--visdom_port', type=int, default = 8888   ,  help='Port use for visdom server.')
+parser.add_argument('--visdom_port', type=int, default = 48481,  help='Port use for visdom server.')
 parser.add_argument('--class_choice', type=str, default = None, nargs='+', help='Class choice')
 opt = parser.parse_args()
 print (opt)
@@ -74,11 +76,13 @@ else:
 
 vis = visdom.Visdom(port = opt.visdom_port, env=opt.env)
 now = datetime.datetime.now()
-save_path = now.isoformat()
-dir_name =  os.path.join('log', save_path)
-if not os.path.exists(dir_name):
-    os.mkdir(dir_name)
+# save_path = now.isoformat()
+save_path = opt.env + "_" + now.isoformat()
+log_dir = os.path.join("runs", "SVR", save_path)
+dir_name =  os.path.join('log', "SVR", save_path)
+os.makedirs(dir_name, exist_ok=True)
 logname = os.path.join(dir_name, 'log.txt')
+writer = SummaryWriter(log_dir=log_dir)
 
 blue = lambda x:'\033[94m' + x + '\033[0m'
 
@@ -92,15 +96,15 @@ torch.manual_seed(opt.manualSeed)
 
 # ===================CREATE DATASET================================= #
 #Create train/test dataloader on new views and test dataset on new models
-dataset = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=True)
+dataset = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=True, npoints = opt.num_points )
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
                                           shuffle=True, num_workers=int(opt.workers))
 
-dataset_test = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=False)
+dataset_test = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=False, npoints = opt.num_points)
 dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=opt.batchSize,
                                           shuffle=False, num_workers=int(opt.workers))
 
-dataset_test_view = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=True, gen_view=True)
+dataset_test_view = ShapeNet( SVR=True, normal = False, class_choice = opt.class_choice, train=True, gen_view=True, npoints = opt.num_points)
 dataloader_test_view = torch.utils.data.DataLoader(dataset_test, batch_size=opt.batchSize,
                                           shuffle=False, num_workers=int(opt.workers))
 
@@ -114,12 +118,13 @@ len_dataset = len(dataset)
 # LOAD Pretrained autoencoder and check its performance on testing set
 network_preTrained_autoencoder = AE_AtlasNet(num_points = opt.num_points, nb_primitives = opt.nb_primitives)
 network_preTrained_autoencoder.cuda()
-network_preTrained_autoencoder.load_state_dict(torch.load(opt.model_preTrained_AE ))
+if opt.model_preTrained_AE is not None:
+    network_preTrained_autoencoder.load_state_dict(torch.load(opt.model_preTrained_AE ))
 val_loss = AverageValueMeter()
 val_loss.reset()
 network_preTrained_autoencoder.eval()
 for i, data in enumerate(dataloader_test, 0):
-    img, points, cat, _ , _= data
+    img, points, cat = data[:3]
     points = points.transpose(2,1).contiguous()
     points = points.cuda()
     pointsReconstructed  = network_preTrained_autoencoder(points)
@@ -195,7 +200,7 @@ for epoch in range(opt.nepoch):
     for i, data in enumerate(dataloader, 0):
         optimizer.zero_grad()
 
-        img, points, cat, _ , _= data
+        img, points, cat = data[:3]
         img = img.cuda()
         points = points.cuda()
 
@@ -206,9 +211,8 @@ for epoch in range(opt.nepoch):
         trainloss_acc0 = trainloss_acc0 * 0.99 + 1
         loss_net.backward()
         train_loss.update(loss_net.item())
-
         optimizer.step()
-                # This is neccesary to avoid a memory leak issue
+        # This is neccesary to avoid a memory leak issue
 
         # VIZUALIZE
         if i%50 <= 0:
@@ -229,6 +233,9 @@ for epoch in range(opt.nepoch):
                         ),
                     )
         print('[%d: %d/%d] train loss:  %f , %f ' %(epoch, i, len_dataset/32, loss_net.item(), trainloss_accs/trainloss_acc0))
+        num_steps = i + len(dataloader) * epoch
+        writer.add_scalar("train/loss", loss_net.cpu().detach().item(), num_steps)
+
 
     #UPDATE CURVES
     train_curve.append(train_loss.avg)
@@ -240,7 +247,7 @@ for epoch in range(opt.nepoch):
             val_view_loss.reset()
             network.eval()
             for i, data in enumerate(dataloader_test_view, 0):
-                img, points, cat, _, _ = data
+                img, points, cat = data[:3]
                 img = img.cuda()
                 points = points.cuda()
                 pointsReconstructed  = network(img)
@@ -250,6 +257,7 @@ for epoch in range(opt.nepoch):
                 val_view_loss.update(loss_net.item())
             #UPDATE CURVES
         val_view_curve.append(val_view_loss.avg)
+        writer.add_scalar("val/same_model_new_view_loss", float(val_view_loss.avg), epoch)
 
         #VALIDATION
         val_loss.reset()
@@ -258,7 +266,7 @@ for epoch in range(opt.nepoch):
 
         network.eval()
         for i, data in enumerate(dataloader_test, 0):
-            img, points, cat, _, _ = data
+            img, points, cat = data[:3]
             img = img.cuda()
             points = points.cuda()
             pointsReconstructed  = network(img)
@@ -313,6 +321,7 @@ for epoch in range(opt.nepoch):
     for item in dataset_test.cat:
         print(item, dataset_test.perCatValueMeter[item].avg)
         log_table.update({item: dataset_test.perCatValueMeter[item].avg})
+        writer.add_scalar("val/cate-%s-loss"%item, float(dataset_test.perCatValueMeter[item].avg), epoch)
     with open(logname, 'a') as f: #open and append
         f.write('json_stats: ' + json.dumps(log_table) + '\n')
     #save last network
