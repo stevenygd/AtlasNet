@@ -63,7 +63,7 @@ random.seed(opt.manualSeed)
 torch.manual_seed(opt.manualSeed)
 
 # ===================CREATE DATASET================================= #
-dataset_test = ShapeNet( normal = False, class_choice = None, train=False)
+dataset_test = ShapeNet( normal = False, class_choice = 'all', train=False)
 dataloader_test = torch.utils.data.DataLoader(dataset_test, batch_size=1,
                                           shuffle=False, num_workers=int(opt.workers))
 

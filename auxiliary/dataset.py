@@ -46,6 +46,13 @@ class ShapeNet(data.Dataset):
         print(class_choice)
         print(self.cat)
 
+        self.perCatValueMeter = {}
+        for item in self.cat:
+            self.perCatValueMeter[item] = AverageValueMeter()
+        self.perCatValueMeter_metro = {}
+        for item in self.cat:
+            self.perCatValueMeter_metro[item] = AverageValueMeter()
+
         empty = []
         for item in self.cat:
             dir_img  = os.path.join(self.rootimg, self.cat[item])

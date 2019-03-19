@@ -30,7 +30,7 @@ parser.add_argument('--num_points', type=int, default = 2048,  help='number of p
 parser.add_argument('--nb_primitives', type=int, default = 25,  help='number of primitives')
 parser.add_argument('--env', type=str, default ="SVR_AtlasNet"   ,  help='visdom env')
 parser.add_argument('--fix_decoder', type=bool, default = True   ,  help='if set to True, on the the resnet encoder is trained')
-parser.add_argument('--accelerated_chamfer', type=int, default =0   ,  help='use custom build accelarated chamfer')
+parser.add_argument('--accelerated_chamfer', type=int, default =1   ,  help='use custom build accelarated chamfer')
 parser.add_argument('--visdom_port', type=int, default = 48481,  help='Port use for visdom server.')
 parser.add_argument('--class_choice', type=str, default = None, nargs='+', help='Class choice')
 opt = parser.parse_args()
@@ -75,9 +75,11 @@ else:
 #Launch visdom for visualization
 
 vis = visdom.Visdom(port = opt.visdom_port, env=opt.env)
-now = datetime.datetime.now()
+import time
+# now = datetime.datetime.now()
+now = time.time()
 # save_path = now.isoformat()
-save_path = opt.env + "_" + now.isoformat()
+save_path = opt.env + "_%d"%int(now)
 log_dir = os.path.join("runs", "SVR", save_path)
 dir_name =  os.path.join('log', "SVR", save_path)
 os.makedirs(dir_name, exist_ok=True)
